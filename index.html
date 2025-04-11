@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NESHA AI Chatbot</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,typography,aspect-ratio,line-clamp,container-queries"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Boldonse&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        /* Özel Stiller ve Animasyonlar */
+        body {
+            /* Inter fontunu temel olarak kullan, Boldonse gerektiğinde uygulanacak */
+            font-family: 'Inter', sans-serif;
+            background-color: #111111;
+            color: #f0f0f0;
+            overflow: hidden; /* Başlangıçta kaydırmayı engelle */
+        }
+
+        /* Açılış Ekranı */
+        #splash-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: #111111; display: flex; flex-direction: column;
+            justify-content: center; align-items: center; z-index: 9999;
+            transition: opacity 0.8s ease-out 1.2s; /* Gecikmeli solma */
+        }
+
+        #splash-text {
+            font-family: 'Boldonse', sans-serif; /* Özel font */
+            font-size: 7rem; /* Biraz daha büyük */
+            font-weight: normal; /* Boldonse zaten kalın */
+            color: #ffffff;
+            animation: pulsateGlow 2.5s ease-in-out infinite;
+            /* Pozisyon ve boyut animasyonu için */
+            position: absolute; /* Animasyon sırasında mutlak konumlandırma */
+            top: 50%; /* Dikey ortala */
+            left: 50%; /* Yatay ortala */
+            transform: translate(-50%, -50%); /* Tam ortala */
+            transition: all 1.2s cubic-bezier(0.6, -0.28, 0.735, 0.045); /* Daha özel animasyon eğrisi */
+            transform-origin: center center;
+            z-index: 10000; /* Diğer her şeyin üstünde */
+            /* Başlangıçta progress bar için yer ayırmaya gerek yok */
+        }
+
+        /* Parıldama Animasyonu (Aynı kalabilir) */
+        @keyframes pulsateGlow {
+            0%, 100% {
+                text-shadow:
+                    0 0 5px #fff, 0 0 10px #fff, 0 0 15px #8A2BE2,
+                    0 0 20px #8A2BE2, 0 0 25px #8A2BE2, 0 0 30px #8A2BE2, 0 0 35px #8A2BE2;
+            }
+            50% {
+                text-shadow:
+                    0 0 7px #fff, 0 0 12px #fff, 0 0 25px #A040FF,
+                    0 0 50px #A040FF, 0 0 90px #A040FF, 0 0 100px #A040FF,
+                    0 0 110px #A040FF, 0 0 160px #A040FF;
+            }
+        }
+
+        /* İlerleme Çubuğu (Konumu splash-text'e göre ayarlanacak) */
+        #progress-bar-container {
+            position: absolute; /* Splash text'e göre konumlanacak */
+            bottom: 25%; /* Ekranın alt %25'i */
+            left: 50%;
+            transform: translateX(-50%);
+            width: 60%; max-width: 300px; height: 8px;
+            background-color: #374151; border-radius: 4px;
+            overflow: hidden;
+            z-index: 9999; /* Splash text'in hemen altında */
+        }
+        #progress-bar-fill {
+            width: 0%; height: 100%; background-color: #8A2BE2;
+            border-radius: 4px;
+            transition: width 2s ease-out;
+        }
+
+        /* Header Stili */
+        #header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 1rem 0; margin-bottom: 1rem; border-bottom: 1px solid #374151;
+            position: relative; /* Placeholder'ın konumlanması için */
+        }
+        /* Header'daki NESHA yazısı için yer tutucu */
+        #header-nesha-placeholder {
+            height: 2.5rem; /* Font boyutuna uygun yükseklik */
+            display: flex;
+            align-items: center;
+            position: relative; /* Splash text'in içine yerleşmesi için */
+            min-width: 100px; /* Yazının sığması için minimum genişlik */
+        }
+        /* Splash text header'a geldiğindeki stil */
+        #splash-text.in-header {
+             font-family: 'Boldonse', sans-serif; /* Fontu koru */
+             font-size: 1.8rem; /* Header boyutu */
+             text-shadow: 0 0 2px #fff, 0 0 5px #8A2BE2, 0 0 10px #8A2BE2; /* Daha hafif glow */
+             animation: none; /* Parıldamayı durdur */
+             /* Konum JS tarafından ayarlanacak */
+        }
+
+
+        /* Kullanıcı Profili (Aynı kalabilir) */
+        #user-profile { position: relative; }
+        #user-icon {
+            width: 40px; height: 40px; background-color: #4b5563;
+            border-radius: 50%; display: flex; justify-content: center;
+            align-items: center; font-weight: bold; font-size: 1.1rem;
+            color: #e5e7eb; cursor: pointer; transition: background-color 0.3s;
+        }
+        #user-icon:hover { background-color: #6b7280; }
+        #profile-dropdown {
+            position: absolute; top: calc(100% + 10px); right: 0;
+            background-color: #1f2937; border: 1px solid #374151;
+            border-radius: 0.5rem; padding: 0.5rem; min-width: 180px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3); z-index: 1000;
+            opacity: 0; visibility: hidden; transform: translateY(-10px);
+            transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s;
+        }
+        #profile-dropdown.active { opacity: 1; visibility: visible; transform: translateY(0); }
+        .dropdown-item { display: block; padding: 0.5rem 0.75rem; color: #d1d5db; border-radius: 0.25rem; transition: background-color 0.2s, color 0.2s; cursor: pointer; font-size: 0.9rem; }
+        .dropdown-item:hover { background-color: #374151; color: #ffffff; }
+        .dropdown-divider { height: 1px; background-color: #374151; margin: 0.5rem 0; }
+        .user-name { padding: 0.5rem 0.75rem; font-weight: 600; color: #f0f0f0; font-size: 0.95rem; border-bottom: 1px solid #374151; margin-bottom: 0.5rem; }
+
+
+        /* Ana İçerik (Genişletilmiş) */
+        #main-content {
+            opacity: 0; transition: opacity 0.8s ease-in;
+            height: 100vh; display: flex; flex-direction: column;
+            /* Genişliği artır */
+            max-width: 4xl; /* Tailwind class'ı (64rem) */
+            margin-left: auto; margin-right: auto; /* Ortalamak için */
+            padding-left: 1rem; padding-right: 1rem; /* Kenar boşlukları */
+        }
+
+        /* Mesaj Baloncukları (Aynı kalabilir) */
+        .message-bubble { padding: 0.75rem 1rem; border-radius: 1rem; margin-bottom: 0.5rem; max-width: 75%; word-wrap: break-word; opacity: 0; animation: fadeIn 0.5s ease-out forwards; }
+        .user-message { background: linear-gradient(to right, #3b82f6, #60a5fa); color: white; align-self: flex-end; border-bottom-right-radius: 0.25rem; box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2); }
+        .bot-message { background-color: #374151; color: #f0f0f0; align-self: flex-start; border-bottom-left-radius: 0.25rem; }
+        .thinking-message { background-color: #4b5563; color: #a0a0a0; font-style: italic; align-self: flex-start; border-bottom-left-radius: 0.25rem; }
+        .message-time { font-size: 0.7rem; color: #a0a0a0; margin-top: 0.25rem; display: block; text-align: right; }
+        .user-message .message-time { color: #dbeafe; }
+        .thinking-message .message-time { color: #9ca3af; }
+
+        /* Kaydırma Çubuğu (Aynı kalabilir) */
+        #chat-messages::-webkit-scrollbar { width: 6px; }
+        #chat-messages::-webkit-scrollbar-track { background: #1f2937; border-radius: 10px; }
+        #chat-messages::-webkit-scrollbar-thumb { background-color: #4b5563; border-radius: 10px; border: 1px solid #1f2937; }
+
+        /* Mesaj Giriş Alanı (Aynı kalabilir) */
+        #input-area { display: flex; align-items: center; gap: 0.5rem; background-color: #1f2937; padding: 0.75rem; border-radius: 999px; border: 1px solid #374151; transition: border-color 0.3s, box-shadow 0.3s; }
+        #input-area:focus-within { border-color: #8A2BE2; box-shadow: 0 0 0 2px rgba(138, 43, 226, 0.3); }
+        #message-input { flex-grow: 1; background: transparent; border: none; color: white; padding: 0.5rem 0.25rem; margin-left: 0.5rem; outline: none; }
+        #send-button { background: linear-gradient(to right, #8A2BE2, #9333ea); color: white; border-radius: 50%; padding: 0.6rem; transition: background 0.3s, transform 0.2s; display: flex; justify-content: center; align-items: center; flex-shrink: 0; }
+        #send-button:hover { background: linear-gradient(to right, #9333ea, #a855f7); transform: scale(1.1); }
+        #send-button:active { transform: scale(1.0); }
+
+        /* Ayarlar Modalı */
+        #settings-modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0, 0, 0, 0.6); /* Karanlık overlay */
+            backdrop-filter: blur(4px); /* Arkaplanı bulanıklaştır */
+            z-index: 10000;
+            opacity: 0; visibility: hidden; /* Başlangıçta gizli */
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        #settings-modal {
+            position: fixed; top: 50%; left: 50%;
+            transform: translate(-50%, -50%) scale(0.95); /* Başlangıçta hafif küçük */
+            background-color: #1f2937; /* Koyu gri */
+            border-radius: 0.75rem; /* Daha yuvarlak köşeler */
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+            padding: 1.5rem 2rem; /* Daha fazla iç boşluk */
+            width: 90%; max-width: 500px; /* Modal genişliği */
+            z-index: 10001;
+            opacity: 0; visibility: hidden; /* Başlangıçta gizli */
+            transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s ease;
+        }
+        #settings-modal-overlay.active, #settings-modal.active {
+            opacity: 1; visibility: visible;
+        }
+        #settings-modal.active {
+             transform: translate(-50%, -50%) scale(1); /* Normal boyut */
+        }
+        .modal-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 1.5rem; padding-bottom: 1rem;
+            border-bottom: 1px solid #374151;
+        }
+        .modal-title { font-size: 1.25rem; font-weight: 600; color: #e5e7eb; }
+        .modal-close-button { background: none; border: none; color: #9ca3af; cursor: pointer; padding: 0.25rem; }
+        .modal-close-button:hover { color: #e5e7eb; }
+        .modal-body { display: flex; flex-direction: column; gap: 1.25rem; /* Ayarlar arası boşluk */ }
+        .setting-item { display: flex; flex-direction: column; gap: 0.5rem; }
+        .setting-label { font-size: 0.9rem; color: #d1d5db; display: flex; justify-content: space-between; }
+        .setting-value { font-weight: 600; color: #e5e7eb; }
+        /* Slider Stilleri */
+        input[type="range"] {
+            -webkit-appearance: none; appearance: none; width: 100%; height: 6px;
+            background: #4b5563; border-radius: 3px; outline: none; cursor: pointer;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none; appearance: none; width: 16px; height: 16px;
+            background: #8A2BE2; border-radius: 50%; cursor: pointer;
+            border: 2px solid #1f2937; /* İç boşluk efekti */
+             transition: background-color 0.2s;
+        }
+         input[type="range"]::-moz-range-thumb { /* Firefox */
+             width: 16px; height: 16px; background: #8A2BE2; border-radius: 50%;
+             cursor: pointer; border: 2px solid #1f2937;
+             transition: background-color 0.2s;
+         }
+        input[type="range"]:hover::-webkit-slider-thumb { background-color: #a855f7; }
+        input[type="range"]:hover::-moz-range-thumb { background-color: #a855f7; }
+
+        .modal-footer {
+            display: flex; justify-content: flex-end; gap: 0.75rem;
+            margin-top: 2rem; padding-top: 1rem;
+            border-top: 1px solid #374151;
+        }
+        .modal-button {
+            padding: 0.6rem 1.2rem; border-radius: 0.375rem; /* 6px */
+            font-weight: 600; transition: background-color 0.3s, color 0.3s, box-shadow 0.2s;
+            cursor: pointer; border: none; font-size: 0.9rem;
+        }
+        .modal-button-cancel {
+            background-color: #4b5563; color: #e5e7eb;
+        }
+        .modal-button-cancel:hover { background-color: #6b7280; }
+        .modal-button-apply {
+            background-color: #8A2BE2; color: white;
+        }
+        .modal-button-apply:hover { background-color: #9333ea; }
+        .modal-button:active { transform: scale(0.98); }
+
+
+        /* Animasyon Keyframes */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <div id="splash-screen">
+        <div id="splash-text">NESHA</div>
+        <div id="progress-bar-container">
+            <div id="progress-bar-fill"></div>
+        </div>
+    </div>
+
+    <div id="main-content" class="container"> <header id="header">
+            <div id="header-nesha-placeholder">
+                </div>
+            <div id="user-profile">
+                <div id="user-icon" aria-label="Kullanıcı menüsü" tabindex="0">M</div>
+                <div id="profile-dropdown" class="hidden">
+                    <div class="user-name">Mert Eren KARA</div>
+                    <a href="#" id="settings-link" class="dropdown-item">Settings</a>
+                    <a href="#" class="dropdown-item">Info</a>
+                    <div class="dropdown-divider"></div>
+                    <a href="#" class="dropdown-item">Logout</a>
+                </div>
+            </div>
+        </header>
+
+        <div id="chat-messages" class="flex-grow overflow-y-auto mb-4 flex flex-col space-y-2 pr-2">
+            <div class="message-bubble bot-message">
+                Merhaba! Ben NESHA. Size nasıl yardımcı olabilirim?
+                <span class="message-time">Şimdi</span>
+            </div>
+        </div>
+
+        <footer class="py-2">
+            <div id="input-area">
+                <input type="text" id="message-input" placeholder="Mesajınızı yazın..." autocomplete="off">
+                <button id="send-button" aria-label="Gönder">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 3 3 9-3 9 19-9Z"/><path d="M6 12h16"/></svg>
+                </button>
+            </div>
+        </footer>
+    </div>
+
+    <div id="settings-modal-overlay" class="hidden"></div>
+    <div id="settings-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title" class="hidden">
+        <div class="modal-header">
+            <h2 id="modal-title" class="modal-title">Settings</h2>
+            <button class="modal-close-button" id="modal-close-button" aria-label="Kapat">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="setting-item">
+                <label for="temperature-slider" class="setting-label">
+                    <span>Temperature</span>
+                    <span class="setting-value" id="temperature-value">0.7</span>
+                </label>
+                <input type="range" id="temperature-slider" min="0" max="1" step="0.1" value="0.7">
+            </div>
+            <div class="setting-item">
+                <label for="beta-slider" class="setting-label">
+                    <span>Beta (Top-p)</span>
+                    <span class="setting-value" id="beta-value">0.9</span>
+                </label>
+                <input type="range" id="beta-slider" min="0" max="1" step="0.1" value="0.9">
+            </div>
+            <div class="setting-item">
+                <label for="context-slider" class="setting-label">
+                    <span>Context Length</span>
+                    <span class="setting-value" id="context-value">10</span>
+                </label>
+                <input type="range" id="context-slider" min="1" max="20" step="1" value="10">
+            </div>
+             <div class="setting-item flex flex-row items-center justify-between">
+                 <label for="stream-toggle" class="setting-label mb-0 mr-4 flex-grow">Stream Response</label>
+                 <button type="button" id="stream-toggle" class="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-purple-600 focus:ring-offset-2 bg-gray-600" role="switch" aria-checked="false">
+                    <span class="sr-only">Stream Response</span>
+                    <span aria-hidden="true" class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out translate-x-0"></span>
+                 </button>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="modal-button modal-button-cancel" id="modal-cancel-button">Cancel</button>
+            <button class="modal-button modal-button-apply" id="modal-apply-button">Apply</button>
+        </div>
+    </div>
+
+
+    <script>
+        // --- Element Referansları ---
+        const splashScreen = document.getElementById('splash-screen');
+        const splashText = document.getElementById('splash-text');
+        const progressBarFill = document.getElementById('progress-bar-fill');
+        const mainContent = document.getElementById('main-content');
+        const headerNeshaPlaceholder = document.getElementById('header-nesha-placeholder'); // Artık placeholder
+        const chatMessages = document.getElementById('chat-messages');
+        const messageInput = document.getElementById('message-input');
+        const sendButton = document.getElementById('send-button');
+        const userProfile = document.getElementById('user-profile');
+        const userIcon = document.getElementById('user-icon');
+        const profileDropdown = document.getElementById('profile-dropdown');
+        const settingsLink = document.getElementById('settings-link');
+        const settingsModalOverlay = document.getElementById('settings-modal-overlay');
+        const settingsModal = document.getElementById('settings-modal');
+        const modalCloseButton = document.getElementById('modal-close-button');
+        const modalCancelButton = document.getElementById('modal-cancel-button');
+        const modalApplyButton = document.getElementById('modal-apply-button');
+        // Modal Ayar Elementleri
+        const tempSlider = document.getElementById('temperature-slider');
+        const tempValue = document.getElementById('temperature-value');
+        const betaSlider = document.getElementById('beta-slider');
+        const betaValue = document.getElementById('beta-value');
+        const contextSlider = document.getElementById('context-slider');
+        const contextValue = document.getElementById('context-value');
+        const streamToggle = document.getElementById('stream-toggle');
+
+
+        let thinkingMessageId = null;
+
+        // --- Yardımcı Fonksiyonlar ---
+        function getCurrentTime() { /* ... (önceki gibi) ... */
+            const now = new Date();
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            return `${hours}:${minutes}`;
+        }
+        function addMessage(sender, text, messageId = null, extraClass = null) { /* ... (önceki gibi) ... */
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('message-bubble');
+            messageDiv.dataset.messageId = messageId || `msg-${Date.now()}-${Math.random()}`;
+
+            if (sender === 'user') { messageDiv.classList.add('user-message'); }
+            else if (extraClass === 'thinking-message') { messageDiv.classList.add('thinking-message'); }
+            else { messageDiv.classList.add('bot-message'); }
+
+            if (extraClass && extraClass !== 'thinking-message') { messageDiv.classList.add(extraClass); }
+
+            messageDiv.appendChild(document.createTextNode(text));
+
+            const timeSpan = document.createElement('span');
+            timeSpan.classList.add('message-time');
+            timeSpan.textContent = getCurrentTime();
+            messageDiv.appendChild(timeSpan);
+
+            chatMessages.appendChild(messageDiv);
+            scrollToBottom();
+            return messageDiv.dataset.messageId;
+        }
+        function updateMessage(messageId, newText) { /* ... (önceki gibi) ... */
+            const messageDiv = chatMessages.querySelector(`[data-message-id="${messageId}"]`);
+            if (messageDiv) {
+                messageDiv.childNodes[0].nodeValue = newText;
+                const timeSpan = messageDiv.querySelector('.message-time');
+                if (timeSpan) timeSpan.textContent = getCurrentTime();
+                messageDiv.classList.remove('thinking-message');
+                messageDiv.classList.add('bot-message');
+                scrollToBottom();
+            }
+        }
+        function scrollToBottom() { /* ... (önceki gibi) ... */ chatMessages.scrollTop = chatMessages.scrollHeight; }
+        function botResponse() { /* ... (önceki gibi) ... */
+             thinkingMessageId = addMessage('bot', 'Thinking...', null, 'thinking-message');
+             setTimeout(() => {
+                 if (thinkingMessageId) {
+                     updateMessage(thinkingMessageId, 'Anlaşıldı');
+                     thinkingMessageId = null;
+                 }
+             }, 1000);
+        }
+        function sendMessage() { /* ... (önceki gibi) ... */
+             const messageText = messageInput.value.trim();
+             if (messageText) {
+                 addMessage('user', messageText);
+                 messageInput.value = '';
+                 botResponse();
+             }
+        }
+        function toggleProfileDropdown(forceClose = false) { /* ... (önceki gibi, forceClose eklendi) ... */
+            const isActive = profileDropdown.classList.contains('active');
+            if (forceClose || isActive) {
+                profileDropdown.classList.remove('active');
+                 setTimeout(() => {
+                    if (!profileDropdown.classList.contains('active')) {
+                         profileDropdown.style.visibility = 'hidden';
+                         profileDropdown.classList.add('hidden'); // Ensure hidden class is present
+                    }
+                }, 300);
+            } else {
+                 profileDropdown.style.visibility = 'visible';
+                 profileDropdown.classList.remove('hidden');
+                 requestAnimationFrame(() => { profileDropdown.classList.add('active'); });
+            }
+        }
+
+        // --- Modal Fonksiyonları ---
+        function openSettingsModal() {
+            toggleProfileDropdown(true); // Profili kapat
+            settingsModalOverlay.classList.remove('hidden');
+            settingsModal.classList.remove('hidden');
+            requestAnimationFrame(() => { // Transition için
+                 settingsModalOverlay.classList.add('active');
+                 settingsModal.classList.add('active');
+            });
+             // TODO: Trap focus inside modal
+        }
+        function closeSettingsModal() {
+            settingsModalOverlay.classList.remove('active');
+            settingsModal.classList.remove('active');
+            setTimeout(() => { // Transition bitince gizle
+                 settingsModalOverlay.classList.add('hidden');
+                 settingsModal.classList.add('hidden');
+            }, 300);
+             // TODO: Release focus trap
+        }
+
+        // --- Olay Dinleyicileri ---
+        sendButton.addEventListener('click', sendMessage);
+        messageInput.addEventListener('keypress', (event) => { /* ... (önceki gibi) ... */
+             if (event.key === 'Enter' && !event.shiftKey) {
+                 event.preventDefault(); sendMessage();
+             }
+        });
+        userIcon.addEventListener('click', (event) => { /* ... (önceki gibi) ... */
+             event.stopPropagation(); toggleProfileDropdown();
+        });
+         userIcon.addEventListener('keydown', (event) => { /* ... (önceki gibi) ... */
+             if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleProfileDropdown(); }
+         });
+        document.addEventListener('click', (event) => { /* ... (önceki gibi) ... */
+             if (!userProfile.contains(event.target) && profileDropdown.classList.contains('active')) { toggleProfileDropdown(); }
+             // Modal dışına tıklama (overlay'e tıklama)
+             if (settingsModalOverlay.classList.contains('active') && event.target === settingsModalOverlay) { closeSettingsModal(); }
+        });
+        profileDropdown.querySelectorAll('a').forEach(link => { /* ... (önceki gibi) ... */
+             link.addEventListener('click', (e) => {
+                 if (link.id !== 'settings-link') { // Settings hariç kapat
+                     toggleProfileDropdown();
+                 }
+             });
+        });
+
+        // Ayarlar Linki
+        settingsLink.addEventListener('click', (event) => {
+            event.preventDefault();
+            openSettingsModal();
+        });
+
+        // Modal Kapatma Butonları
+        modalCloseButton.addEventListener('click', closeSettingsModal);
+        modalCancelButton.addEventListener('click', closeSettingsModal);
+        modalApplyButton.addEventListener('click', () => {
+            // Ayarları uygula (şimdilik sadece kapat)
+            console.log('Ayarlar uygulandı (simülasyon):');
+            console.log(' - Temperature:', tempSlider.value);
+            console.log(' - Beta:', betaSlider.value);
+            console.log(' - Context Length:', contextSlider.value);
+            console.log(' - Stream Response:', streamToggle.getAttribute('aria-checked') === 'true');
+            closeSettingsModal();
+        });
+
+        // Modal Slider Değerlerini Güncelleme
+        tempSlider.addEventListener('input', (e) => { tempValue.textContent = e.target.value; });
+        betaSlider.addEventListener('input', (e) => { betaValue.textContent = e.target.value; });
+        contextSlider.addEventListener('input', (e) => { contextValue.textContent = e.target.value; });
+
+        // Stream Toggle
+        streamToggle.addEventListener('click', () => {
+            const isChecked = streamToggle.getAttribute('aria-checked') === 'true';
+            streamToggle.setAttribute('aria-checked', !isChecked);
+            streamToggle.classList.toggle('bg-purple-600', !isChecked); // Açıkken mor
+            streamToggle.classList.toggle('bg-gray-600', isChecked); // Kapalıyken gri
+            streamToggle.querySelector('span[aria-hidden="true"]').classList.toggle('translate-x-5', !isChecked); // Topun hareketi
+            streamToggle.querySelector('span[aria-hidden="true"]').classList.toggle('translate-x-0', isChecked);
+        });
+
+
+        // --- Başlangıç İşlemleri ---
+        window.addEventListener('load', () => {
+            // Lucide ikonlarını başlat (statik versiyon için gerekli değil ama zararı olmaz)
+            if (typeof lucide !== 'undefined') {
+                 try { lucide.createIcons(); } catch (e) { console.error("Lucide icons could not be created.", e); }
+            } else {
+                console.warn("Lucide library not found.");
+            }
+
+
+            // Başlangıç bot mesajını ayarla ve göster
+            const initialBotMessage = chatMessages.querySelector('.bot-message');
+            if (initialBotMessage) { /* ... (önceki gibi) ... */
+                 initialBotMessage.querySelector('.message-time').textContent = getCurrentTime();
+                 initialBotMessage.style.opacity = '0';
+                 setTimeout(() => { initialBotMessage.style.opacity = '1'; }, 50);
+            }
+
+            // Progress bar'ı doldurmaya başla
+            requestAnimationFrame(() => { requestAnimationFrame(() => { progressBarFill.style.width = '100%'; }); });
+
+            // Progress bar dolduktan ve animasyon bittikten sonra geçiş yap
+            setTimeout(() => {
+                // Header'daki placeholder'ın pozisyonunu al
+                const placeholderRect = headerNeshaPlaceholder.getBoundingClientRect();
+
+                // Splash Text'i header'a taşı ve stilini değiştir
+                splashText.style.top = `${placeholderRect.top + placeholderRect.height / 2}px`; // Dikey ortala
+                splashText.style.left = `${placeholderRect.left + placeholderRect.width / 2}px`; // Yatay ortala
+                splashText.style.transform = 'translate(-50%, -50%)'; // Placeholder içinde ortala
+                splashText.classList.add('in-header'); // Header stilini uygula
+
+                // Açılış ekranını soldur
+                splashScreen.style.opacity = '0';
+
+                // Ana içeriği göster
+                mainContent.style.opacity = '1';
+                document.body.style.overflow = 'auto';
+
+                // Animasyon ve geçişler bittikten sonra temizlik
+                setTimeout(() => {
+                    splashScreen.style.display = 'none';
+                    // Splash text'i placeholder'ın içine DOM olarak taşı (opsiyonel ama daha temiz)
+                    headerNeshaPlaceholder.appendChild(splashText);
+                    splashText.style.position = 'static'; // Normal akışa dönsün
+                    splashText.style.transform = 'none'; // Transformu sıfırla
+                    splashText.style.top = ''; // Pozisyonları sıfırla
+                    splashText.style.left = '';
+
+                }, 1200); // splashText animasyon süresi kadar bekle
+
+            }, 2200); // Progress bar süresi + küçük bir ek süre
+        });
+
+    </script>
+</body>
+</html>
